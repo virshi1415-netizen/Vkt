@@ -1,0 +1,7 @@
+cd ruta/a/tu/carpeta/dj-web-app
+git init
+git add index.html
+git commit -m "Primer commit: base DJ Web App"
+git branch -M main
+git remote add origin https://github.com/TU_USUARIO/dj-web-app.git
+git push -u origin main
