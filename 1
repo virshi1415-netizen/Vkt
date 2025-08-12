@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DJ Web App - Base Offline</title>
+<style>
+  body {
+    background: #121212;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    margin: 0; padding: 0;
+  }
+  .container {
+    max-width: 960px;
+    margin: auto;
+    padding: 10px;
+  }
+  h1 {
+    text-align: center;
+    color: #f9a825;
+  }
+  .deck {
+    background: #222;
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 8px;
+  }
+  .deck h2 {
+    margin: 0 0 10px 0;
+    color: #fbc02d;
+  }
+  input[type="file"] {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  label {
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    flex: 1 1 150px;
+  }
+  input[type="range"] {
+    margin-top: 5px;
+  }
+  button {
+    background: #fbc02d;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    color: #222;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #f9a825;
+  }
+  #crossfader-container {
+    background: #222;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  #crossfader-container label {
+    margin-bottom: 5px;
+    color: #fbc02d;
+  }
+  canvas {
+    width: 100%;
+    height: 60px;
+    background: #333;
+    border-radius: 5px;
+    margin-top: 10px;
+  }
+  .sampler {
+    background: #222;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+  }
+  .pads {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .pad {
+    background: #fbc02d;
+    border-radius: 5px;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #222;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pad:active {
+    background: #f9a825;
+  }
+  #record-controls {
+    text-align: center;
+    margin: 20px 0;
+  }
+  #record-status {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #fbc02d;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>DJ Web App - Base Offline</h1>
+
+    <div class="deck" id="deckA">
+      <h2>Deck A</h2>
+      <input type="file" accept="audio/*" id="fileA" />
+      <div class="controls">
+        <button id="playA">Play</button>
+        <button id="stopA">Stop</button>
+        <label>Volumen
+          <input type="range" id="gainA" min="0" max="1" step="0.01" value="0.8" />
+        </label>
+        <label>Pitch
+          <input type="range" id="rateA" min="0.5" max="2" step="0.01" value="1" />
+        </label>
+        <label>EQ Bajo
+          <input type="range" id="lowA" min="-15" max="15" step="1" value="0" />
+        </label>
+        <label>EQ Medio
+          <input type="range" id="midA" min="-15" max="15" step="1" value="0" />
+        </label>
+        <label>EQ Alto
+          <input type="range" id="highA" min="-15" max="15" step="1" value="0" />
+        </label>
+      </div>
+      <canvas id="waveA"></canvas>
+    </div>
+
+    <div class="deck" id="deckB">
+      <h2>Deck B</h2>
+      <input type="file" accept="audio/*" id="fileB" />
+      <div class="controls">
+        <button id="playB">Play</button>
+        <button id="stopB">Stop</button>
+        <label>Volumen
+          <input type="range" id="gainB" min="0" max="1" step="0.01" value="0.8" />
+        </label>
+        <label>Pitch
+          <input type="range" id="rateB" min="0.5" max="2" step="0.01" value="1" />
+        </label>
+        <label>EQ Bajo
+          <input type="range" id="lowB" min="-15" max="15" step="1" value="0" />
+        </label>
+        <label>EQ Medio
+          <input type="range" id="midB" min="-15" max="15" step="1" value="0" />
+        </label>
+        <label>EQ Alto
+          <input type="range" id="highB" min="-15" max="15" step="1" value="0" />
+        </label>
+      </div>
+      <canvas id="waveB"></canvas>
+    </div>
+
+    <div id="crossfader-container">
+      <label>Crossfader</label>
+      <input type="range" id="crossfader" min="0" max="1" step="0.01" value="0" />
+    </div>
+
+    <div class="sampler">
+      <h2>Sampler</h2>
+      <div class="pads">
+        <div class="pad" data-sound="kick">Kick</div>
+        <div class="pad" data-sound="snare">Snare</div>
+        <div class="pad" data-sound="hihat">Hi-Hat</div>
+        <div class="pad" data-sound="clap">Clap</div>
+      </div>
+    </div>
+
+    <div id="record-controls">
+      <button id="startRecord">Grabar Mezcla</button>
+      <button id="stopRecord" disabled>Detener Grabación</button>
+      <div id="record-status"></div>
+    </div>
+  </div>
+
+<script>
+  // Setup Audio Context
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  const ac = new AudioContext();
+
+  // Utility to create filters for EQ
+  function createEQ() {
+    const low = ac.createBiquadFilter();
+    low.type = 'lowshelf';
+    low.frequency.value = 200;
+    const mid = ac.createBiquadFilter();
+    mid.type = 'peaking';
+    mid.frequency.value = 1000;
+    mid.Q.value = 1;
+    const high = ac.createBiquadFilter();
+    high.type = 'highshelf';
+    high.frequency.value = 4000;
+    return { low, mid, high };
+  }
+
+  class Deck {
+    constructor(prefix) {
+      this.prefix = prefix;
+      this.audio = new Audio();
+      this.audio.crossOrigin = "anonymous";
+      this.source = null;
+      this.gainNode = ac.createGain();
+      this.eq = createEQ();
+      this.analyser = ac.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+      this.eq.low.connect(this.eq.mid);
+      this.eq.mid.connect(this.eq.high);
+      this.eq.high.connect(this.gainNode);
+      this.gainNode.connect(this.analyser);
+      this.analyser.connect(ac.destination);
+
+      this.elements = {
+        file: document.getElementById('file' + prefix),
+        playBtn: document.getElementById('play' + prefix),
+        stopBtn: document.getElementById('stop' + prefix),
+        gain: document.getElementById('gain' + prefix),
+        rate: document.getElementById('rate' + prefix),
+        low: document.getElementById('low' + prefix),
+        mid: document.getElementById('mid' + prefix),
+        high: document.getElementById('high' + prefix),
+        canvas: document.getElementById('wave' + prefix),
+      };
+
+      this.ctx = this.elements.canvas.getContext('2d');
+      this.isPlaying = false;
+
+      this.setupEvents();
+      this.drawWaveform();
+    }
+
+    setupEvents() {
+      this.elements.file.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        this.audio.src = url;
+      });
+
+      this.elements.playBtn.addEventListener('click', async () => {
+        if (!this.audio.src) return alert('Cargá un archivo de audio primero.');
+        if (ac.state === 'suspended') await ac.resume();
+        this.audio.play();
+        this.isPlaying = true;
+      });
+
+      this.elements.stopBtn.addEventListener('click', () => {
+        this.audio.pause();
+        this.audio.currentTime = 0;
+        this.isPlaying = false;
+      });
+
+      this.elements.gain.addEventListener('input', e => {
+        this.gainNode.gain.value = parseFloat(e.target.value);
+      });
+      this.gainNode.gain.value = parseFloat(this.elements.gain.value);
+
+      this.elements.rate.addEventListener('input', e => {
+        this.audio.playbackRate = parseFloat(e.target.value);
+      });
+
+      this.elements.low.addEventListener('input', e => {
+        this.eq.low.gain.value = parseFloat(e.target.value);
+      });
+      this.elements.mid.addEventListener('input', e => {
+        this.eq.mid.gain.value = parseFloat(e.target.value);
+      });
+      this.elements.high.addEventListener('input', e => {
+        this.eq.high.gain.value = parseFloat(e.target.value);
+      });
+    }
+
+    drawWaveform() {
+      requestAnimationFrame(() => this.drawWaveform());
+      const width = this.elements.canvas.width = this.elements.canvas.clientWidth * devicePixelRatio;
+      const height = this.elements.canvas.height = this.elements.canvas.clientHeight * devicePixelRatio;
+      this.ctx.clearRect(0, 0, width, height);
+      this.analyser.getByteTimeDomainData(this.dataArray);
+      this.ctx.lineWidth = 2 * devicePixelRatio;
+      this.ctx.strokeStyle = '#fbc02d';
+      this.ctx.beginPath();
+      const sliceWidth = width / this.dataArray.length;
+      let x = 0;
+      for (let i = 0; i < this.dataArray.length; i++) {
+        const v = this.dataArray[i] / 128.0;
+        const y = v * height / 2;
+        if (i === 0) this.ctx.moveTo(x, y);
+        else this.ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      this.ctx.lineTo(width, height / 2);
+      this.ctx.stroke();
+    }
+  }
+
+  // Create decks
+  const deckA = new Deck('A');
+  const deckB = new Deck('B');
+
+  // Crossfader logic
+  const crossfader = document.getElementById('crossfader');
+  function updateCrossfade() {
+    const val = parseFloat(crossfader.value);
+    deckA.gainNode.gain.value = (1 - val) * parseFloat(deckA.elements.gain.value);
+    deckB.gainNode.gain.value = val * parseFloat(deckB.elements.gain.value);
+  }
+  crossfader.addEventListener('input', updateCrossfade);
+  updateCrossfade();
+
+  // Sampler sounds
+  const samplerSounds = {
+    kick: 'https://cdn.jsdelivr.net/gh/jbrown-signal/samples@master/kick.wav',
+    snare: 'https://cdn.jsdelivr.net/gh/jbrown-signal/samples@master/snare.wav',
+    hihat: 'https://cdn.jsdelivr.net/gh/jbrown-signal/samples@master/hihat.wav',
+    clap: 'https://cdn.jsdelivr.net/gh/jbrown-signal/samples@master/clap.wav'
+  };
+
+  const
